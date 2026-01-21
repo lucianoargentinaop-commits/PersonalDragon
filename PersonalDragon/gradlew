@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+# Minimal Gradle wrapper script (will download gradle-wrapper.jar on first run if missing)
+DIR="$(cd "$(dirname "$0")" && pwd)"
+WRAPPER_JAR="$DIR/gradle/wrapper/gradle-wrapper.jar"
+PROPS="$DIR/gradle/wrapper/gradle-wrapper.properties"
+
+if [ ! -f "$WRAPPER_JAR" ]; then
+  echo "gradle-wrapper.jar no está incluido. Bajándolo..."
+  DIST_URL=$(grep distributionUrl "$PROPS" | sed 's/.*=//')
+  mkdir -p "$DIR/.wrapper_tmp"
+  curl -L "$DIST_URL" -o "$DIR/.wrapper_tmp/gradle.zip" || wget -O "$DIR/.wrapper_tmp/gradle.zip" "$DIST_URL"
+  unzip -q "$DIR/.wrapper_tmp/gradle.zip" -d "$DIR/.wrapper_tmp"
+  GRADLE_DIR=$(find "$DIR/.wrapper_tmp" -maxdepth 1 -type d -name "gradle-*" | head -n 1)
+  if [ -z "$GRADLE_DIR" ]; then
+    echo "No pude extraer Gradle. Instalá Gradle o bajá el wrapper oficial."
+    exit 1
+  fi
+  # Use embedded gradle to generate wrapper jar
+  "$GRADLE_DIR/bin/gradle" wrapper --gradle-version 8.8
+  rm -rf "$DIR/.wrapper_tmp"
+fi
+
+java -jar "$WRAPPER_JAR" "$@"
