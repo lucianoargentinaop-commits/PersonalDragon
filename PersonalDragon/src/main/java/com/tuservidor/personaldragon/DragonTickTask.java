@@ -65,7 +65,7 @@ public class DragonTickTask implements Runnable {
 
             float pitch = look.getPitch();
             if (pitch < ascendPitch) dir.setY(ascendSpeed);
-            else if (pitch > descendPitch) dir.setY(-descentSpeed);
+            else if (pitch > descendPitch) dir.setY(-descendSpeed);
             else dir.setY(0.0);
 
             if (b.vehicle().getLocation().getY() >= maxY && dir.getY() > 0) dir.setY(0.0);
