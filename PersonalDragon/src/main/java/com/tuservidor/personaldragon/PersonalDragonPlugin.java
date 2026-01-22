@@ -1,3 +1,4 @@
+private InputManager inputManager;
 package com.tuservidor.personaldragon;
 
 import org.bukkit.Bukkit;
@@ -9,7 +10,9 @@ public class PersonalDragonPlugin extends JavaPlugin {
     private StaminaManager staminaManager;
 
     @Override
-    public void onEnable() {
+    public void onEnable(this.inputManager = new InputManager();
+Bukkit.getPluginManager().registerEvents(
+        new PlayerInputListener(inputManager), this) {
         saveDefaultConfig();
 
         this.staminaManager = new StaminaManager(this);
