@@ -1,12 +1,24 @@
-import org.bukkit.configuration.ConfigurationSection;
 package com.tuservidor.personaldragon;
 
-import org.bukkit.*;
-import org.bukkit.entity.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.NamespacedKey;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.util.Vector;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class DragonManager {
 
@@ -41,31 +53,52 @@ public class DragonManager {
             as.setInvisible(true);
             as.setInvulnerable(true);
             as.setGravity(false);
+            as.setCollidable(false);
+            as.setSilent(true);
             as.getPersistentDataContainer().set(keyOwner, PersistentDataType.STRING, owner.toString());
         });
 
         Interaction hitbox = w.spawn(base, Interaction.class, i -> {
-            i.setInteractionWidth(3f);
-            i.setInteractionHeight(2.5f);
+            i.setInteractionWidth(3.2f);
+            i.setInteractionHeight(2.6f);
         });
 
-        List<BlockDisplay> blocks = new ArrayList<>();
         ConfigurationSection palette = plugin.getConfig().getConfigurationSection("dragon.palette");
+        if (palette == null) palette = plugin.getConfig().createSection("dragon.palette");
 
-        for (List<?> entry : plugin.getConfig().getMapList("dragon.blocks")) {
+        List<BlockDisplay> parts = new ArrayList<>();
+        List<?> raw = plugin.getConfig().getMapList("dragon.blocks");
+
+        for (Object obj : raw) {
+            if (!(obj instanceof List<?> entry) || entry.size() < 4) continue;
+
             double x = ((Number) entry.get(0)).doubleValue();
             double y = ((Number) entry.get(1)).doubleValue();
             double z = ((Number) entry.get(2)).doubleValue();
             String key = entry.get(3).toString();
 
-            Material mat = Material.valueOf(palette.getString(key));
-            BlockDisplay bd = w.spawn(base.clone().add(x, y, z), BlockDisplay.class);
-            bd.setBlock(Bukkit.createBlockData(mat));
-            bd.setTransformation(bd.getTransformation());
-            blocks.add(bd);
+            String matName = palette.getString(key, "BLACK_CONCRETE");
+            Material mat;
+            try {
+                mat = Material.valueOf(matName);
+            } catch (Exception ex) {
+                mat = Material.BLACK_CONCRETE;
+            }
+
+            BlockData data = Bukkit.createBlockData(mat);
+
+            Location spawnLoc = base.clone().add(x, y, z);
+            BlockDisplay bd = w.spawn(spawnLoc, BlockDisplay.class, d -> {
+                d.setBlock(data);
+                d.setPersistent(false);
+                d.setInvulnerable(true);
+                d.getPersistentDataContainer().set(keyOwner, PersistentDataType.STRING, owner.toString());
+            });
+
+            parts.add(bd);
         }
 
-        DragonBundle bundle = new DragonBundle(owner, vehicle, hitbox, blocks);
+        DragonBundle bundle = new DragonBundle(owner, vehicle, hitbox, parts);
         dragons.put(owner, bundle);
         stamina.reset(p);
         return bundle;
@@ -76,20 +109,39 @@ public class DragonManager {
         if (b != null) b.remove();
     }
 
+    public void despawnAll() {
+        for (DragonBundle b : dragons.values()) {
+            try { b.remove(); } catch (Exception ignored) {}
+        }
+        dragons.clear();
+    }
+
+    public void mount(Player p) {
+        DragonBundle b = get(p);
+        if (b == null || !b.isValid()) return;
+        if (!b.vehicle().getPassengers().contains(p)) b.vehicle().addPassenger(p);
+    }
+
     public void sync(Player p) {
         DragonBundle b = get(p);
-        if (b == null) return;
+        if (b == null || !b.isValid()) return;
 
         Location base = b.vehicle().getLocation();
+
+        List<?> raw = plugin.getConfig().getMapList("dragon.blocks");
         int i = 0;
 
-        for (List<?> entry : plugin.getConfig().getMapList("dragon.blocks")) {
+        for (Object obj : raw) {
+            if (i >= b.blocks().size()) break;
+            if (!(obj instanceof List<?> entry) || entry.size() < 4) continue;
+
             double x = ((Number) entry.get(0)).doubleValue();
             double y = ((Number) entry.get(1)).doubleValue();
             double z = ((Number) entry.get(2)).doubleValue();
 
             Vector offset = new Vector(x, y, z).rotateAroundY(Math.toRadians(base.getYaw()));
-            b.blocks().get(i++).teleport(base.clone().add(offset));
+            b.blocks().get(i).teleport(base.clone().add(offset));
+            i++;
         }
 
         b.hitbox().teleport(base);
