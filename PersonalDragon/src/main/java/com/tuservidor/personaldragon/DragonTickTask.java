@@ -10,41 +10,47 @@ public class DragonTickTask implements Runnable {
     private final PersonalDragonPlugin plugin;
     private final DragonManager manager;
     private final StaminaManager stamina;
+    private final InputManager input;
 
-    public DragonTickTask(PersonalDragonPlugin plugin, DragonManager manager, StaminaManager stamina) {
+    public DragonTickTask(PersonalDragonPlugin plugin, DragonManager manager, StaminaManager stamina, InputManager input) {
         this.plugin = plugin;
         this.manager = manager;
         this.stamina = stamina;
+        this.input = input;
     }
 
     @Override
     public void run() {
-        double speed = plugin.getConfig().getDouble("flight.speed", 0.9);
-        double boostSpeed = plugin.getConfig().getDouble("flight.boost_speed", 1.6);
+        boolean useWsad = plugin.getConfig().getBoolean("controls.use_wsad", true);
 
-        double ascendPitch = plugin.getConfig().getDouble("flight.ascend_pitch", -20);
-        double descendPitch = plugin.getConfig().getDouble("flight.descend_pitch", 25);
-        double ascendSpeed = plugin.getConfig().getDouble("flight.ascend_speed", 0.55);
-        double descendSpeed = plugin.getConfig().getDouble("flight.descend_speed", 0.40);
+        double forwardSpeed = plugin.getConfig().getDouble("controls.forward_speed", 1.10);
+        double backwardSpeed = plugin.getConfig().getDouble("controls.backward_speed", 0.75);
+        double yawTurnSpeed = plugin.getConfig().getDouble("controls.yaw_turn_speed", 4.0);
 
-        int maxY = plugin.getConfig().getInt("flight.max_y", 320);
+        double boostMult = plugin.getConfig().getDouble("controls.boost_multiplier", 1.65);
 
-        double drainBoost = plugin.getConfig().getDouble("stamina.drain_per_tick_boost", 0.45);
-        double regenNormal = plugin.getConfig().getDouble("stamina.regen_per_tick_normal", 0.20);
-        double regenOff = plugin.getConfig().getDouble("stamina.regen_per_tick_offmount", 0.45);
+        double ascendPitch = plugin.getConfig().getDouble("controls.ascend_pitch", -18);
+        double descendPitch = plugin.getConfig().getDouble("controls.descend_pitch", 28);
+        double ascendSpeed = plugin.getConfig().getDouble("controls.ascend_speed", 0.55);
+        double descendSpeed = plugin.getConfig().getDouble("controls.descend_speed", 0.45);
 
+        int maxY = plugin.getConfig().getInt("limits.max_y", 320);
+
+        double drainBoost = plugin.getConfig().getDouble("stamina.drain_per_tick_boost", 0.55);
+        double regenMounted = plugin.getConfig().getDouble("stamina.regen_per_tick_mounted", 0.22);
+        double regenOff = plugin.getConfig().getDouble("stamina.regen_per_tick_offmount", 0.50);
         boolean slowOnLow = plugin.getConfig().getBoolean("stamina.low_stamina_slowdown", true);
+        double slowMult = plugin.getConfig().getDouble("stamina.slowdown_multiplier", 0.55);
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (!manager.hasDragon(p)) continue;
 
-            DragonBundle b = manager.getBundle(p);
+            DragonBundle b = manager.get(p);
             if (b == null || !b.isValid()) continue;
 
-            manager.syncVisual(p);
+            manager.sync(p);
 
             boolean mounted = b.vehicle().getPassengers().contains(p);
-
             if (!mounted) {
                 stamina.regen(p, regenOff);
                 stamina.showBar(p, false, false);
@@ -55,24 +61,45 @@ public class DragonTickTask implements Runnable {
             boolean canBoost = wantsBoost && stamina.has(p, drainBoost);
 
             if (canBoost) stamina.drain(p, drainBoost);
-            else stamina.regen(p, regenNormal);
+            else stamina.regen(p, regenMounted);
 
-            double usedSpeed = canBoost ? boostSpeed : speed;
-            if (slowOnLow && stamina.get(p) <= 1.0) usedSpeed *= 0.55;
+            double speedMult = canBoost ? boostMult : 1.0;
+            if (slowOnLow && stamina.get(p) <= 1.0) speedMult *= slowMult;
 
-            Vector input = plugin.getInputManager().get(p);
-            Vector dir = p.getLocation().getDirection().normalize()
-            .multiply(input.getZ() > 0 ? forwardSpeed : backwardSpeed);
+            Location look = p.getLocation();
+            Vector vel;
 
+            if (useWsad) {
+                // input.getZ() = W/S (forward/back)
+                // input.getX() = A/D (left/right)
+                Vector in = input.get(p);
 
+                // Giro con A/D
+                float yaw = b.vehicle().getLocation().getYaw();
+                yaw += (float) (-in.getX() * yawTurnSpeed);
+                Location vLoc = b.vehicle().getLocation();
+                vLoc.setYaw(yaw);
+                b.vehicle().teleport(vLoc);
+
+                // Avanzar / retroceder relativo al yaw del vehículo
+                double baseSpeed = (in.getZ() >= 0 ? forwardSpeed : backwardSpeed) * Math.abs(in.getZ());
+                Vector forward = vLoc.getDirection().normalize().multiply(baseSpeed * speedMult);
+                vel = forward;
+
+            } else {
+                // modo cámara: hacia donde mirás
+                vel = look.getDirection().normalize().multiply(forwardSpeed * speedMult);
+            }
+
+            // Ascenso/descenso mirando arriba/abajo
             float pitch = look.getPitch();
-            if (pitch < ascendPitch) dir.setY(ascendSpeed);
-            else if (pitch > descendPitch) dir.setY(-descendSpeed);
-            else dir.setY(0.0);
+            if (pitch < ascendPitch) vel.setY(ascendSpeed);
+            else if (pitch > descendPitch) vel.setY(-descendSpeed);
+            else vel.setY(0.0);
 
-            if (b.vehicle().getLocation().getY() >= maxY && dir.getY() > 0) dir.setY(0.0);
+            if (b.vehicle().getLocation().getY() >= maxY && vel.getY() > 0) vel.setY(0.0);
 
-            b.vehicle().setVelocity(dir);
+            b.vehicle().setVelocity(vel);
 
             stamina.showBar(p, canBoost, true);
         }
