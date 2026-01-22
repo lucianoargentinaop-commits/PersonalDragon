@@ -3,23 +3,43 @@ package com.tuservidor.personaldragon;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.lang.reflect.Method;
 
 public class InputManager {
 
-    private final Map<UUID, Vector> inputs = new HashMap<>();
+    // Intentamos usar Player#getCurrentInput() si existe.
+    // Si no existe (según tu Paper API), devolvemos (0,0,0) y el plugin puede fallback a modo cámara.
+    private Method getCurrentInputMethod;
 
-    public void update(Player player, float forward, float sideways) {
-        inputs.put(player.getUniqueId(), new Vector(sideways, 0, forward));
+    public InputManager() {
+        try {
+            getCurrentInputMethod = Player.class.getMethod("getCurrentInput");
+        } catch (NoSuchMethodException ignored) {
+            getCurrentInputMethod = null;
+        }
     }
 
-    public Vector get(Player player) {
-        return inputs.getOrDefault(player.getUniqueId(), new Vector(0, 0, 0));
+    public boolean supportsNativeInput() {
+        return getCurrentInputMethod != null;
     }
 
-    public void clear(Player player) {
-        inputs.remove(player.getUniqueId());
+    public Vector read(Player p) {
+        if (getCurrentInputMethod == null) return new Vector(0, 0, 0);
+
+        try {
+            Object inputObj = getCurrentInputMethod.invoke(p);
+            if (inputObj == null) return new Vector(0, 0, 0);
+
+            // Paper input suele tener forward() y sideways()
+            Method forward = inputObj.getClass().getMethod("forward");
+            Method sideways = inputObj.getClass().getMethod("sideways");
+
+            float f = ((Number) forward.invoke(inputObj)).floatValue();   // W/S
+            float s = ((Number) sideways.invoke(inputObj)).floatValue();  // A/D
+
+            return new Vector(s, 0, f);
+        } catch (Throwable t) {
+            return new Vector(0, 0, 0);
+        }
     }
 }
