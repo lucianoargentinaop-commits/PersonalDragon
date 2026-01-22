@@ -72,7 +72,9 @@ public class DragonTickTask implements Runnable {
             if (useWsad) {
                 // input.getZ() = W/S (forward/back)
                 // input.getX() = A/D (left/right)
-                Vector in = input.get(p);
+                Vector in = input.read(p);
+                boolean nativeInput = input.supportsNativeInput();
+
 
                 // Giro con A/D
                 float yaw = b.vehicle().getLocation().getYaw();
