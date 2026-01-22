@@ -1,4 +1,3 @@
-private InputManager inputManager;
 package com.tuservidor.personaldragon;
 
 import org.bukkit.Bukkit;
@@ -9,11 +8,14 @@ public class PersonalDragonPlugin extends JavaPlugin {
     private DragonManager dragonManager;
     private StaminaManager staminaManager;
 
+    private InputManager inputManager;
+
     @Override
-    public void onEnable(this.inputManager = new InputManager();
-Bukkit.getPluginManager().registerEvents(
-        new PlayerInputListener(inputManager), this) {
+    public void onEnable() {
         saveDefaultConfig();
+
+        this.inputManager = new InputManager();
+        Bukkit.getPluginManager().registerEvents(new PlayerInputListener(inputManager), this);
 
         this.staminaManager = new StaminaManager(this);
         this.dragonManager = new DragonManager(this, staminaManager);
@@ -21,7 +23,7 @@ Bukkit.getPluginManager().registerEvents(
         getCommand("pdragon").setExecutor(new PDragonCommand(this, dragonManager, staminaManager));
         Bukkit.getPluginManager().registerEvents(new PDragonListener(dragonManager), this);
 
-        Bukkit.getScheduler().runTaskTimer(this, new DragonTickTask(this, dragonManager, staminaManager), 1L, 1L);
+        Bukkit.getScheduler().runTaskTimer(this, new DragonTickTask(this, dragonManager, staminaManager, inputManager), 1L, 1L);
     }
 
     @Override
