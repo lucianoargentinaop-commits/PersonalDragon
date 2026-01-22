@@ -8,9 +8,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-import java.util.UUID;
-
 public class PDragonListener implements Listener {
+
     private final DragonManager manager;
 
     public PDragonListener(DragonManager manager) {
@@ -19,21 +18,21 @@ public class PDragonListener implements Listener {
 
     @EventHandler
     public void onInteract(PlayerInteractAtEntityEvent e) {
-        Entity clicked = e.getRightClicked();
-        if (!manager.isOurEntity(clicked)) return;
-
-        UUID owner = manager.getOwner(clicked);
         Player p = e.getPlayer();
+        Entity clicked = e.getRightClicked();
 
-        if (owner == null || !owner.equals(p.getUniqueId())) {
-            p.sendMessage(ChatColor.RED + "Ese dragón no es tuyo.");
+        // Solo montamos si el jugador tiene dragón y el click fue cerca del vehículo/hitbox
+        DragonBundle b = manager.get(p);
+        if (b == null || !b.isValid()) return;
+
+        if (clicked.getUniqueId().equals(b.vehicle().getUniqueId())
+                || clicked.getUniqueId().equals(b.hitbox().getUniqueId())
+                || clicked.getLocation().distanceSquared(b.vehicle().getLocation()) <= 9.0) {
+
+            manager.mount(p);
+            p.sendMessage(ChatColor.AQUA + "Montado. Sprint para BOOST (consume stamina).");
             e.setCancelled(true);
-            return;
         }
-
-        manager.mount(p);
-        p.sendMessage(ChatColor.AQUA + "Montado. Sprint para BOOST (consume stamina).");
-        e.setCancelled(true);
     }
 
     @EventHandler
