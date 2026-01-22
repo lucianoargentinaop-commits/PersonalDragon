@@ -14,9 +14,6 @@ public class PersonalDragonPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
 
-        this.inputManager = new InputManager();
-        Bukkit.getPluginManager().registerEvents(new PlayerInputListener(inputManager), this);
-
         this.staminaManager = new StaminaManager(this);
         this.dragonManager = new DragonManager(this, staminaManager);
 
