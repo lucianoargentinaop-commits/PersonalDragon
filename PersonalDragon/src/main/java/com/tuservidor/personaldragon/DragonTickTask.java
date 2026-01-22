@@ -60,8 +60,10 @@ public class DragonTickTask implements Runnable {
             double usedSpeed = canBoost ? boostSpeed : speed;
             if (slowOnLow && stamina.get(p) <= 1.0) usedSpeed *= 0.55;
 
-            Location look = p.getLocation();
-            Vector dir = look.getDirection().normalize().multiply(usedSpeed);
+            Vector input = plugin.getInputManager().get(p);
+            Vector dir = p.getLocation().getDirection().normalize()
+            .multiply(input.getZ() > 0 ? forwardSpeed : backwardSpeed);
+
 
             float pitch = look.getPitch();
             if (pitch < ascendPitch) dir.setY(ascendSpeed);
