@@ -67,7 +67,10 @@ public class DragonManager {
         if (palette == null) palette = plugin.getConfig().createSection("dragon.palette");
 
         List<BlockDisplay> parts = new ArrayList<>();
-        List<?> raw = plugin.getConfig().getMapList("dragon.blocks");
+
+        // ✅ CAMBIO 1: usar getList() porque tu config usa listas tipo: - [0, 1, 0, "body"]
+        List<?> raw = plugin.getConfig().getList("dragon.blocks");
+        if (raw == null) raw = java.util.Collections.emptyList();
 
         for (Object obj : raw) {
             if (!(obj instanceof List<?> entry) || entry.size() < 4) continue;
@@ -96,6 +99,11 @@ public class DragonManager {
             });
 
             parts.add(bd);
+        }
+
+        // ✅ Aviso si no se creó nada (así sabes al toque si el config está mal)
+        if (parts.isEmpty()) {
+            plugin.getLogger().warning("No se crearon bloques. Revisá dragon.blocks en plugins/PersonalDragon/config.yml");
         }
 
         DragonBundle bundle = new DragonBundle(owner, vehicle, hitbox, parts);
@@ -128,7 +136,10 @@ public class DragonManager {
 
         Location base = b.vehicle().getLocation();
 
-        List<?> raw = plugin.getConfig().getMapList("dragon.blocks");
+        // ✅ CAMBIO 2: usar getList() también acá
+        List<?> raw = plugin.getConfig().getList("dragon.blocks");
+        if (raw == null) raw = java.util.Collections.emptyList();
+
         int i = 0;
 
         for (Object obj : raw) {
