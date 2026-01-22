@@ -1,3 +1,4 @@
+import org.bukkit.configuration.ConfigurationSection;
 package com.tuservidor.personaldragon;
 
 import org.bukkit.*;
