@@ -20,8 +20,8 @@ public record DragonBundle(
     }
 
     public void remove() {
-        for (BlockDisplay bd : blocks) bd.remove();
-        hitbox.remove();
-        vehicle.remove();
+        if (blocks != null) for (BlockDisplay bd : blocks) if (bd != null) bd.remove();
+        if (hitbox != null) hitbox.remove();
+        if (vehicle != null) vehicle.remove();
     }
 }
