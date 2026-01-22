@@ -69,28 +69,32 @@ public class DragonTickTask implements Runnable {
             Location look = p.getLocation();
             Vector vel;
 
-            if (useWsad) {
-                // input.getZ() =
+            // Leer input si la API lo soporta; si no, devolvemos 0,0,0 y usamos fallback.
+            Vector in = input.read(p);
+            boolean nativeInput = input.supportsNativeInput();
 
-
-                // Giro con A/D
+            if (useWsad && nativeInput) {
+                // A/D = giro del dragón (yaw)
                 float yaw = b.vehicle().getLocation().getYaw();
                 yaw += (float) (-in.getX() * yawTurnSpeed);
+
                 Location vLoc = b.vehicle().getLocation();
                 vLoc.setYaw(yaw);
                 b.vehicle().teleport(vLoc);
 
-                // Avanzar / retroceder relativo al yaw del vehículo
-                double baseSpeed = (in.getZ() >= 0 ? forwardSpeed : backwardSpeed) * Math.abs(in.getZ());
+                // W/S = forward/back relativo al yaw del vehículo
+                double strength = Math.min(1.0, Math.abs(in.getZ()));
+                double baseSpeed = (in.getZ() >= 0 ? forwardSpeed : backwardSpeed) * strength;
+
                 Vector forward = vLoc.getDirection().normalize().multiply(baseSpeed * speedMult);
                 vel = forward;
 
             } else {
-                // modo cámara: hacia donde mirás
+                // Fallback: modo cámara (si no hay soporte input)
                 vel = look.getDirection().normalize().multiply(forwardSpeed * speedMult);
             }
 
-            // Ascenso/descenso mirando arriba/abajo
+            // Subir/bajar mirando arriba/abajo (pitch del jugador)
             float pitch = look.getPitch();
             if (pitch < ascendPitch) vel.setY(ascendSpeed);
             else if (pitch > descendPitch) vel.setY(-descendSpeed);
